@@ -9,7 +9,11 @@ import (
 
 type Config struct {
 	TelegramToken string
-	DatabaseURL   string
+	DBHost        string
+	DBPort        string
+	DBUser        string
+	DBPassword    string
+	DBName        string
 }
 
 func LoadConfig() (*Config, error) {
@@ -21,16 +25,10 @@ func LoadConfig() (*Config, error) {
 
 	return &Config{
 		TelegramToken: os.Getenv("TELEGRAM_TOKEN"),
-		DatabaseURL:   getDatabaseURL(),
+		DBHost:        os.Getenv("DB_HOST"),
+		DBPort:        os.Getenv("DB_PORT"),
+		DBUser:        os.Getenv("DB_USER"),
+		DBPassword:    os.Getenv("DB_PASSWORD"),
+		DBName:        os.Getenv("DB_NAME"),
 	}, nil
-}
-
-func getDatabaseURL() string {
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-
-	return "postgres://" + user + ":" + password + "@" + host + ":" + port + "/" + dbName + "?sslmode=disable"
 }

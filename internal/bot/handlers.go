@@ -24,14 +24,12 @@ type User struct {
 func handleStart(b *Bot, message *tgbotapi.Message) {
 	user, err := getUserByTelegramID(b.DB, int64(message.From.ID))
 	if err != nil {
-		// Если пользователь не зарегистрирован, предложить регистрацию
 		welcomeText := "👋 Добро пожаловать! Пожалуйста, зарегистрируйтесь, отправив свой пропуск с помощью команды /register."
 		msg := tgbotapi.NewMessage(message.Chat.ID, welcomeText)
 		b.Telegram.Send(msg)
 		return
 	}
 
-	// Приветственное сообщение для зарегистрированного пользователя
 	welcomeText := fmt.Sprintf("👋 Добро пожаловать, %s!\nВыберите одну из опций ниже:", user.Name)
 	keyboard := getMainMenuKeyboard(user.Role)
 	msg := tgbotapi.NewMessage(message.Chat.ID, welcomeText)
@@ -48,7 +46,6 @@ func handleRegister(b *Bot, message *tgbotapi.Message) {
 		return
 	}
 
-	// Запрос пропуска
 	msgText := "Пожалуйста, введите ваш пропуск для регистрации."
 	msg := tgbotapi.NewMessage(message.Chat.ID, msgText)
 	b.Telegram.Send(msg)
@@ -86,7 +83,59 @@ func handleSchedule(b *Bot, message *tgbotapi.Message) {
 	b.Telegram.Send(msg)
 }
 
-// Обработчик текстовых сообщений
+// Обработчик команды /admin
+func handleAdmin(b *Bot, message *tgbotapi.Message) {
+	user, err := getUserByTelegramID(b.DB, int64(message.From.ID))
+	if err != nil || user.Role != "admin" {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "У вас нет прав администратора.")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	adminMenu := tgbotapi.NewMessage(message.Chat.ID, "Добро пожаловать в административное меню! Используйте следующие команды:\n"+
+		"/add_passcode - Добавить пропуск\n"+
+		"/add_student - Добавить студента\n"+
+		"/add_teacher - Добавить преподавателя\n"+
+		"/add_schedule - Добавить расписание")
+	b.Telegram.Send(adminMenu)
+}
+
+// Обработчик команды /add_passcode
+func handleAddPasscode(b *Bot, message *tgbotapi.Message) {
+	user, err := getUserByTelegramID(b.DB, int64(message.From.ID))
+	if err != nil || user.Role != "admin" {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "У вас нет прав администратора.")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	args := strings.Split(message.CommandArguments(), " ")
+	if len(args) != 2 {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Используйте формат: /add_passcode <код> <роль>")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	code := args[0]
+	role := args[1]
+
+	if role != "student" && role != "teacher" && role != "admin" {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Неверная роль. Используйте: student, teacher или admin.")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	_, err = b.DB.Exec(`INSERT INTO passcodes (code, role) VALUES ($1, $2)`, code, role)
+	if err != nil {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Ошибка при добавлении пропуска.")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf("Пропуск %s для роли %s успешно добавлен.", code, role))
+	b.Telegram.Send(msg)
+}
+
 // Обработчик текстовых сообщений
 func handleMessage(b *Bot, message *tgbotapi.Message) {
 	user, err := getUserByTelegramID(b.DB, int64(message.From.ID))
@@ -95,7 +144,6 @@ func handleMessage(b *Bot, message *tgbotapi.Message) {
 		return
 	}
 
-	// Пример использования переменной user
 	msgText := fmt.Sprintf("Привет, %s! Я не понимаю эту команду. Пожалуйста, используйте доступные команды.", user.Name)
 	msg := tgbotapi.NewMessage(message.Chat.ID, msgText)
 	b.Telegram.Send(msg)

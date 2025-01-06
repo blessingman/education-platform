@@ -5,15 +5,20 @@ services:
     image: postgres:14
     container_name: education-platform-db
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secure_password
+      POSTGRES_DB: education_platform
     ports:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./scripts/setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
     networks:
       - education-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      retries: 5
 
   bot:
     build:
@@ -22,13 +27,14 @@ services:
     container_name: education-platform-bot
     environment:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
+      - DB_USER=postgres
+      - DB_PASSWORD=your_secure_password
+      - DB_NAME=education_platform
       - DB_HOST=db
       - DB_PORT=5432
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - education-network
 

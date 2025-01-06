@@ -7,29 +7,26 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-// Bot структура бота
+// Bot - структура для хранения бота и базы данных
 type Bot struct {
 	Telegram *tgbotapi.BotAPI
 	DB       *sql.DB
 }
 
-// NewBot инициализирует новый бот
+// NewBot - функция для создания нового бота
 func NewBot(token string, db *sql.DB) (*Bot, error) {
-	telegramBot, err := tgbotapi.NewBotAPI(token)
+	botAPI, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return nil, err
 	}
 
-	telegramBot.Debug = true
-	log.Printf("Авторизовались как %s", telegramBot.Self.UserName)
-
 	return &Bot{
-		Telegram: telegramBot,
+		Telegram: botAPI,
 		DB:       db,
 	}, nil
 }
 
-// Start запускает бота и начинает прослушивание обновлений
+// Start запускает бота
 func (b *Bot) Start() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -40,25 +37,33 @@ func (b *Bot) Start() {
 	}
 
 	for update := range updates {
-		if update.Message == nil { // Игнорируем любые обновления, которые не являются сообщениями
+		if update.Message == nil {
 			continue
 		}
 
 		if update.Message.IsCommand() {
-			switch update.Message.Command() {
-			case "start":
-				handleStart(b, update.Message)
-			case "register":
-				handleRegister(b, update.Message)
-			case "schedule":
-				handleSchedule(b, update.Message)
-			default:
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда. Используйте /start или /register.")
-				b.Telegram.Send(msg)
-			}
+			handleCommand(b, update.Message)
 		} else {
-			// Обработка сообщений, не являющихся командами
 			handleMessage(b, update.Message)
 		}
+	}
+}
+
+// Обработчик всех команд
+func handleCommand(b *Bot, message *tgbotapi.Message) {
+	switch message.Command() {
+	case "start":
+		handleStart(b, message)
+	case "register":
+		handleRegister(b, message)
+	case "schedule":
+		handleSchedule(b, message)
+	case "admin":
+		handleAdmin(b, message)
+	case "add_passcode":
+		handleAddPasscode(b, message)
+	default:
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Неизвестная команда. Используйте /start или /help.")
+		b.Telegram.Send(msg)
 	}
 }

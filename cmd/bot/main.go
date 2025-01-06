@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/blessingman/education-platform/internal/bot"
 	"github.com/blessingman/education-platform/internal/config"
-	"github.com/blessingman/education-platform/internal/database"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -16,7 +18,10 @@ func main() {
 	}
 
 	// Подключение к базе данных
-	db, err := database.Connect(cfg.DatabaseURL)
+	db, err := sql.Open("postgres", fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName,
+	))
 	if err != nil {
 		log.Fatalf("Ошибка подключения к базе данных: %v", err)
 	}
