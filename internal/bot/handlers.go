@@ -8,17 +8,9 @@ import (
 	"strings"
 	"time"
 
+	model "github.com/blessingman/education-platform/internal/models"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
-
-// Структура пользователя
-type User struct {
-	ID         int
-	TelegramID int64
-	Name       string
-	Email      string
-	Role       string
-}
 
 // Обработчик команды /start
 func handleStart(b *Bot, message *tgbotapi.Message) {
@@ -161,8 +153,8 @@ func handleMessage(b *Bot, message *tgbotapi.Message) {
 }
 
 // Функция для получения пользователя по Telegram ID
-func getUserByTelegramID(db *sql.DB, telegramID int64) (*User, error) {
-	var user User
+func getUserByTelegramID(db *sql.DB, telegramID int64) (*model.User, error) {
+	var user model.User
 	query := `SELECT id, telegram_id, name, email, role, active FROM users WHERE telegram_id = $1`
 	err := db.QueryRow(query, telegramID).Scan(&user.ID, &user.TelegramID, &user.Name, &user.Email, &user.Role, &user.Active)
 	if err != nil {
