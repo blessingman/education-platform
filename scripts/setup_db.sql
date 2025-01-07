@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(100),
     email VARCHAR(100),
     role VARCHAR(50) CHECK (role IN ('student', 'teacher', 'admin')) NOT NULL
+    active BOOLEAN DEFAULT TRUE
 );
 
 -- Таблица пропусков

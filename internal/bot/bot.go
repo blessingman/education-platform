@@ -27,6 +27,7 @@ func NewBot(token string, db *sql.DB) (*Bot, error) {
 }
 
 // Start запускает бота
+// Start запускает бота
 func (b *Bot) Start() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -37,14 +38,14 @@ func (b *Bot) Start() {
 	}
 
 	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
-
-		if update.Message.IsCommand() {
-			handleCommand(b, update.Message)
-		} else {
-			handleMessage(b, update.Message)
+		if update.Message != nil {
+			if update.Message.IsCommand() {
+				handleCommand(b, update.Message)
+			} else {
+				handleMessage(b, update.Message)
+			}
+		} else if update.CallbackQuery != nil {
+			handleCallbackQuery(b, update.CallbackQuery)
 		}
 	}
 }
@@ -62,6 +63,9 @@ func handleCommand(b *Bot, message *tgbotapi.Message) {
 		handleAdmin(b, message)
 	case "add_passcode":
 		handleAddPasscode(b, message)
+	case "logout":
+		handleLogout(b, message)
+
 	default:
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Неизвестная команда. Используйте /start или /help.")
 		b.Telegram.Send(msg)

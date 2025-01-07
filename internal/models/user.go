@@ -1,9 +1,10 @@
 package models
 
 type User struct {
-	ID         int    `db:"id"`
-	TelegramID int64  `db:"telegram_id"`
-	Name       string `db:"name"`
-	Email      string `db:"email"`
-	Role       string `db:"role"`
+	ID         int    `json:"id"`
+	TelegramID int64  `json:"telegram_id"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	Role       string `json:"role"`
+	Active     bool   `json:"active"`
 }

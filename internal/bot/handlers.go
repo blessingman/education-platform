@@ -39,15 +39,26 @@ func handleStart(b *Bot, message *tgbotapi.Message) {
 
 // Обработчик команды /register
 func handleRegister(b *Bot, message *tgbotapi.Message) {
-	_, err := getUserByTelegramID(b.DB, int64(message.From.ID))
+	user, err := getUserByTelegramID(b.DB, int64(message.From.ID))
 	if err == nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "Вы уже зарегистрированы.")
-		b.Telegram.Send(msg)
+		if user.Active {
+			msg := tgbotapi.NewMessage(message.Chat.ID, "Вы уже зарегистрированы и активны.")
+			b.Telegram.Send(msg)
+		} else {
+			// Реактивируем аккаунт
+			_, err = b.DB.Exec(`UPDATE users SET active = TRUE WHERE telegram_id = $1`, user.TelegramID)
+			if err != nil {
+				msg := tgbotapi.NewMessage(message.Chat.ID, "Ошибка при активации аккаунта. Попробуйте позже.")
+				b.Telegram.Send(msg)
+			} else {
+				msg := tgbotapi.NewMessage(message.Chat.ID, "Ваш аккаунт был успешно активирован.")
+				b.Telegram.Send(msg)
+			}
+		}
 		return
 	}
 
-	msgText := "Пожалуйста, введите ваш пропуск для регистрации."
-	msg := tgbotapi.NewMessage(message.Chat.ID, msgText)
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Пожалуйста, введите ваш пропуск для регистрации.")
 	b.Telegram.Send(msg)
 }
 
@@ -152,11 +163,17 @@ func handleMessage(b *Bot, message *tgbotapi.Message) {
 // Функция для получения пользователя по Telegram ID
 func getUserByTelegramID(db *sql.DB, telegramID int64) (*User, error) {
 	var user User
-	query := `SELECT id, telegram_id, name, email, role FROM users WHERE telegram_id = $1`
-	err := db.QueryRow(query, telegramID).Scan(&user.ID, &user.TelegramID, &user.Name, &user.Email, &user.Role)
+	query := `SELECT id, telegram_id, name, email, role, active FROM users WHERE telegram_id = $1`
+	err := db.QueryRow(query, telegramID).Scan(&user.ID, &user.TelegramID, &user.Name, &user.Email, &user.Role, &user.Active)
 	if err != nil {
 		return nil, err
 	}
+
+	// Проверяем, активен ли пользователь
+	if !user.Active {
+		return nil, fmt.Errorf("пользователь неактивен")
+	}
+
 	return &user, nil
 }
 
@@ -243,5 +260,48 @@ func handlePasscodeRegistration(b *Bot, message *tgbotapi.Message) {
 	welcomeText := fmt.Sprintf("✅ Вы успешно зарегистрированы как *%s*. Добро пожаловать!", assignedRole)
 	msg := tgbotapi.NewMessage(message.Chat.ID, welcomeText)
 	msg.ParseMode = "Markdown"
+	b.Telegram.Send(msg)
+}
+
+// Обработка inline-кнопок
+// Обработка inline-кнопок
+func handleCallbackQuery(b *Bot, callback *tgbotapi.CallbackQuery) {
+	var responseText string
+
+	switch callback.Data {
+	case "schedule_group":
+		responseText = "Вы выбрали просмотр расписания по группе."
+	case "schedule_teacher":
+		responseText = "Вы выбрали просмотр расписания по преподавателю."
+	default:
+		responseText = "Неизвестный выбор."
+	}
+
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, responseText)
+	b.Telegram.Send(msg)
+
+	// Подтверждаем нажатие кнопки
+	callbackResponse := tgbotapi.NewCallback(callback.ID, "Выбор принят")
+	b.Telegram.AnswerCallbackQuery(callbackResponse)
+}
+
+// Обработка команды /logout
+func handleLogout(b *Bot, message *tgbotapi.Message) {
+	user, err := getUserByTelegramID(b.DB, int64(message.From.ID))
+	if err != nil {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Вы не зарегистрированы.")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	// Обновляем статус пользователя на "неактивен"
+	_, err = b.DB.Exec(`UPDATE users SET active = FALSE WHERE telegram_id = $1`, user.TelegramID)
+	if err != nil {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Произошла ошибка при выходе из системы. Попробуйте позже.")
+		b.Telegram.Send(msg)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Вы успешно вышли из системы. Чтобы снова войти, используйте команду /register и введите ваш пропуск.")
 	b.Telegram.Send(msg)
 }

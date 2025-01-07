@@ -25,11 +25,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: education-platform-bot
+    env_file:
+      - .env
     environment:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - DB_USER=postgres
-      - DB_PASSWORD=your_secure_password
-      - DB_NAME=education_platform
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
       - DB_HOST=db
       - DB_PORT=5432
     depends_on:
